@@ -1,0 +1,5 @@
+{
+  "name": "Cortex AI RAG Agent",
+  "description": "A production-grade RAG knowledge base chat application.",
+  "requestFramePermissions": []
+}

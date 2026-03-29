@@ -1,0 +1,82 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "DM Sans", system-ui, sans-serif;
+  --font-serif: "Instrument Serif", Georgia, serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  --color-bg-primary: var(--bg-primary);
+  --color-bg-secondary: var(--bg-secondary);
+  --color-bg-tertiary: var(--bg-tertiary);
+  --color-bg-hover: var(--bg-hover);
+  --color-bg-active: var(--bg-active);
+  
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+  
+  --color-accent-gold: var(--accent-gold);
+  --color-accent-gold-dim: var(--accent-gold-dim);
+  --color-accent-gold-glow: var(--accent-gold-glow);
+  
+  --color-status-ready: var(--status-ready);
+  --color-status-indexing: var(--status-indexing);
+  --color-status-failed: var(--status-failed);
+  --color-status-uploading: var(--status-uploading);
+  
+  --color-border-subtle: var(--border-subtle);
+  --color-border-default: var(--border-default);
+}
+
+@layer base {
+  :root {
+    --bg-primary: #FAF8F5;
+    --bg-secondary: #FFFFFF;
+    --bg-tertiary: #F0EDE8;
+    --bg-hover: #EBE7E1;
+    --bg-active: #E5E0D8;
+    --text-primary: #1A1A2E;
+    --text-secondary: #6B6B80;
+    --text-tertiary: #A0A0B0;
+    --accent-gold: #EAB308;
+    --accent-gold-dim: #EAB30815;
+    --accent-gold-glow: #EAB30840;
+    --status-ready: #4ADE80;
+    --status-indexing: #FBBF24;
+    --status-failed: #F87171;
+    --status-uploading: #60A5FA;
+    --border-subtle: #00000008;
+    --border-default: #00000012;
+  }
+
+  html.dark {
+    --bg-primary: #0A0A0F;
+    --bg-secondary: #12121A;
+    --bg-tertiary: #1A1A26;
+    --bg-hover: #222233;
+    --bg-active: #2A2A3D;
+    --text-primary: #EAEAF0;
+    --text-secondary: #8888A0;
+    --text-tertiary: #55556A;
+    --accent-gold: #FACC15;
+    --accent-gold-dim: #FACC1520;
+    --accent-gold-glow: #FACC1540;
+    --status-ready: #4ADE80;
+    --status-indexing: #FBBF24;
+    --status-failed: #F87171;
+    --status-uploading: #60A5FA;
+    --border-subtle: #FFFFFF08;
+    --border-default: #FFFFFF12;
+  }
+
+  body {
+    @apply bg-bg-primary text-text-primary font-sans antialiased selection:bg-accent-gold-dim selection:text-accent-gold;
+  }
+}
+
+@layer utilities {
+  .glass-panel {
+    @apply bg-bg-secondary/80 backdrop-blur-xl border border-border-default shadow-lg;
+  }
+}
