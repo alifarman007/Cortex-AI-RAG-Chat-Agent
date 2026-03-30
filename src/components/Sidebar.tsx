@@ -35,6 +35,13 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
   const [conversations, setConversations] = useState<any[]>([]);
   const [knowledgeBases, setKnowledgeBases] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleClickOutside = () => setActiveDropdown(null);
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -74,6 +81,18 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
       .single();
     
     if (data) navigate(`/chat/${data.id}`);
+  };
+
+  const handleDeleteChat = async (e: React.MouseEvent, id: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    await supabase.from('conversations').delete().eq('id', id);
+    
+    if (location.pathname === `/chat/${id}`) {
+      navigate('/');
+    }
+    setActiveDropdown(null);
   };
 
   const filteredConvs = conversations.filter(c => c.title.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -156,12 +175,39 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
                   {isActive && !collapsed && <div className="absolute left-0 top-1 bottom-1 w-[3px] bg-accent-gold rounded-r-full" />}
                   <MessageSquare size={16} className="shrink-0" />
                   {!collapsed && (
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm truncate">{conv.title}</div>
-                      {conv.knowledge_bases && (
-                        <div className="text-[10px] text-text-tertiary truncate">{conv.knowledge_bases.name}</div>
-                      )}
-                    </div>
+                    <>
+                      <div className="flex-1 min-w-0 pr-6">
+                        <div className="text-sm truncate">{conv.title}</div>
+                        {conv.knowledge_bases && (
+                          <div className="text-[10px] text-text-tertiary truncate">{conv.knowledge_bases.name}</div>
+                        )}
+                      </div>
+                      
+                      <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setActiveDropdown(activeDropdown === conv.id ? null : conv.id);
+                          }}
+                          className="p-1 text-text-tertiary hover:text-text-primary hover:bg-bg-tertiary rounded-md"
+                        >
+                          <MoreVertical size={14} />
+                        </button>
+                        
+                        {activeDropdown === conv.id && (
+                          <div className="absolute right-0 top-full mt-1 w-32 bg-bg-secondary border border-border-default rounded-md shadow-lg z-50 py-1">
+                            <button
+                              onClick={(e) => handleDeleteChat(e, conv.id)}
+                              className="w-full text-left px-3 py-1.5 text-sm text-red-400 hover:bg-bg-tertiary hover:text-red-300 flex items-center gap-2"
+                            >
+                              <Trash2 size={14} />
+                              Delete Chat
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </>
                   )}
                 </Link>
               );

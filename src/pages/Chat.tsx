@@ -42,7 +42,11 @@ export default function Chat() {
 
   const fetchModels = async () => {
     const { data } = await supabase.from('models').select('*').eq('is_enabled', true).order('sort_order');
-    if (data) setModels(data);
+    if (data) {
+      // Filter out 'lite' model as requested
+      const filteredModels = data.filter(m => !m.api_model_id.includes('lite'));
+      setModels(filteredModels);
+    }
   };
 
   const fetchConversation = async () => {
@@ -134,13 +138,15 @@ export default function Chat() {
       const decoder = new TextDecoder();
       let fullResponse = '';
       let finalCitations = [];
+      let buffer = '';
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         
-        const chunk = decoder.decode(value);
-        const lines = chunk.split('\n\n');
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n\n');
+        buffer = lines.pop() || '';
         
         for (const line of lines) {
           if (line.startsWith('data: ')) {
@@ -169,22 +175,56 @@ export default function Chat() {
               if (data.error) {
                 console.error(data.error);
                 setMessages(prev => [...prev.filter(m => m.id !== 'temp-user'), { ...userMessage }, {
-                  id: 'error-msg',
+                  id: `error-${Date.now()}`,
                   role: 'assistant',
                   content: `Error: ${data.error}`
                 }]);
                 setStreamingText('');
               }
             } catch (e) {
-              // Ignore parse errors for incomplete chunks
+              console.error('Failed to parse SSE chunk:', line, e);
             }
           }
+        }
+      }
+
+      if (buffer.startsWith('data: ')) {
+        try {
+          const data = JSON.parse(buffer.slice(6));
+          if (data.text) {
+            fullResponse += data.text;
+            setStreamingText(fullResponse);
+          }
+          if (data.done) {
+            finalCitations = data.citations || [];
+            const { data: savedMsg } = await supabase.from('messages').insert({
+              conversation_id: convId,
+              role: 'assistant',
+              content: data.fullText,
+              citations: finalCitations,
+              model_used: selectedModel
+            }).select().single();
+            if (savedMsg) {
+              setMessages(prev => [...prev.filter(m => m.id !== 'temp-user'), { ...userMessage }, savedMsg]);
+            }
+            setStreamingText('');
+          }
+          if (data.error) {
+            setMessages(prev => [...prev.filter(m => m.id !== 'temp-user'), { ...userMessage }, {
+              id: `error-${Date.now()}`,
+              role: 'assistant',
+              content: `Error: ${data.error}`
+            }]);
+            setStreamingText('');
+          }
+        } catch (e) {
+          console.error('Failed to parse final SSE chunk:', buffer, e);
         }
       }
     } catch (error: any) {
       console.error('Error sending message:', error);
       setMessages(prev => [...prev.filter(m => m.id !== 'temp-user'), { ...userMessage }, {
-        id: 'error-msg',
+        id: `error-${Date.now()}`,
         role: 'assistant',
         content: `Error: ${error.message || 'An unexpected error occurred.'}`
       }]);
