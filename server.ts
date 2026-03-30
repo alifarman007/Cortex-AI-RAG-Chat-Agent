@@ -15,6 +15,15 @@ const PORT = 3000;
 
 app.use(express.json());
 
+app.get('/api/test-ai', (req, res) => {
+  try {
+    getAiClient();
+    res.json({ success: true });
+  } catch (e: any) {
+    res.json({ error: e.message });
+  }
+});
+
 const upload = multer({ dest: 'uploads/' });
 
 // Helper to create an authenticated Supabase client
@@ -22,8 +31,8 @@ const getSupabaseClient = (req: express.Request) => {
   const authHeader = req.headers.authorization;
   const token = authHeader?.split(' ')[1];
   
-  if (!token) {
-    throw new Error('Unauthorized');
+  if (!token || token === 'undefined' || token === 'null') {
+    throw new Error('Unauthorized: No valid auth token provided');
   }
 
   return createClient(
@@ -39,7 +48,21 @@ const getSupabaseClient = (req: express.Request) => {
   );
 };
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+function getAiClient() {
+  // AI Studio injects the Gemini API key into process.env.GEMINI_API_KEY or process.env.API_KEY
+  let key = (process.env.GEMINI_API_KEY || process.env.API_KEY || '')?.trim();
+  
+  if (key && key.startsWith('"') && key.endsWith('"')) {
+    key = key.slice(1, -1);
+  }
+  
+  if (!key || key === 'MY_GEMINI_API_KEY' || key === 'YOUR_API_KEY' || key === 'undefined') {
+    console.error('[AI Client Error] Invalid or missing API key detected. Key value starts with:', key ? key.substring(0, 3) : 'empty');
+    throw new Error('The AI service is currently unavailable due to a server configuration issue. Please try again later.');
+  }
+  
+  return new GoogleGenAI({ apiKey: key });
+}
 
 // POST /api/knowledge-base
 app.post('/api/knowledge-base', async (req, res) => {
@@ -126,6 +149,7 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
     if (fetchError) throw fetchError;
 
     // Upload to Google File API
+    const ai = getAiClient();
     const uploadResult = await ai.files.upload({
       file: file.path,
       config: {
@@ -246,6 +270,7 @@ app.post('/api/chat', async (req, res) => {
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
 
+    const ai = getAiClient();
     const responseStream = await ai.models.generateContentStream({
       model: apiModelId,
       contents,

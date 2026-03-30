@@ -34,13 +34,19 @@ export default function Login() {
 
   const handleGoogleLogin = async () => {
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/chat`,
+          skipBrowserRedirect: true, // Required for iframe environments
         },
       });
       if (error) throw error;
+      
+      if (data?.url) {
+        // Open the Google OAuth URL directly in a popup
+        window.open(data.url, 'oauth_popup', 'width=600,height=700');
+      }
     } catch (err: any) {
       setError(err.message);
     }

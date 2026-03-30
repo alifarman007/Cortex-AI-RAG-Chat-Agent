@@ -86,7 +86,17 @@ export default function KnowledgeBaseDetail() {
       });
 
       if (!response.ok) {
-        throw new Error('Upload failed');
+        let errorMsg = 'Upload failed';
+        try {
+          const errorData = await response.json();
+          errorMsg = errorData.error || errorMsg;
+        } catch (e) {
+          try {
+            const textData = await response.text();
+            if (textData) errorMsg = textData;
+          } catch (e2) {}
+        }
+        throw new Error(errorMsg);
       }
 
     } catch (error: any) {

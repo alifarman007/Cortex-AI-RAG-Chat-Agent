@@ -26,12 +26,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+      
+      // If we are in a popup window and authenticated, close the popup
+      if (session && window.opener) {
+        window.close();
+      }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+      
+      // If we are in a popup window and authenticated, close the popup
+      if (session && window.opener) {
+        window.close();
+      }
     });
 
     return () => subscription.unsubscribe();

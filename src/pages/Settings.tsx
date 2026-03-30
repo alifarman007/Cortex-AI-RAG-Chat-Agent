@@ -88,7 +88,7 @@ export default function Settings() {
                     className="w-full bg-bg-tertiary border border-border-default rounded-lg px-4 py-2 text-text-primary focus:outline-none focus:border-accent-gold focus:ring-1 focus:ring-accent-gold transition-all appearance-none"
                   >
                     {models.map(m => (
-                      <option key={m.id} value={m.id}>{m.icon} {m.display_name}</option>
+                      <option key={m.id} value={m.id}>{m.display_name}</option>
                     ))}
                   </select>
                 </div>

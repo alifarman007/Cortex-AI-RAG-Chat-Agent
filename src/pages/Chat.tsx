@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/AuthContext';
 import Sidebar from '../components/Sidebar';
-import { Paperclip, Send, PanelRightClose, PanelRightOpen, FileText, AlertCircle, Loader2 } from 'lucide-react';
+import { Paperclip, Send, PanelRightClose, PanelRightOpen, FileText, AlertCircle, Loader2, ChevronDown } from 'lucide-react';
 import { cn } from '../components/Sidebar';
 
 export default function Chat() {
@@ -19,6 +19,7 @@ export default function Chat() {
   const [currentKb, setCurrentKb] = useState<any>(null);
   const [models, setModels] = useState<any[]>([]);
   const [selectedModel, setSelectedModel] = useState('flash');
+  const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const [streamingText, setStreamingText] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -112,6 +113,21 @@ export default function Chat() {
         })
       });
 
+      if (!response.ok) {
+        let errorMsg = `HTTP error! status: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMsg = errorData.error || errorMsg;
+        } catch (e) {
+          // If not JSON, try text
+          try {
+            const textData = await response.text();
+            if (textData) errorMsg = textData;
+          } catch (e2) {}
+        }
+        throw new Error(errorMsg);
+      }
+
       if (!response.body) throw new Error('No response body');
 
       const reader = response.body.getReader();
@@ -152,6 +168,12 @@ export default function Chat() {
               }
               if (data.error) {
                 console.error(data.error);
+                setMessages(prev => [...prev.filter(m => m.id !== 'temp-user'), { ...userMessage }, {
+                  id: 'error-msg',
+                  role: 'assistant',
+                  content: `Error: ${data.error}`
+                }]);
+                setStreamingText('');
               }
             } catch (e) {
               // Ignore parse errors for incomplete chunks
@@ -159,8 +181,13 @@ export default function Chat() {
           }
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error sending message:', error);
+      setMessages(prev => [...prev.filter(m => m.id !== 'temp-user'), { ...userMessage }, {
+        id: 'error-msg',
+        role: 'assistant',
+        content: `Error: ${error.message || 'An unexpected error occurred.'}`
+      }]);
     } finally {
       setLoading(false);
     }
@@ -184,6 +211,52 @@ export default function Chat() {
               {currentKb ? currentKb.name : 'Cortex AI'}
             </span>
             <span className="text-base font-medium text-text-tertiary font-sans uppercase tracking-widest">RAG Agent</span>
+            
+            {/* Model Selector Dropdown */}
+            <div className="relative ml-2">
+              <button 
+                onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
+                className="flex items-center gap-1.5 text-sm font-medium text-text-secondary hover:text-text-primary transition-colors px-2 py-1 rounded-md hover:bg-bg-hover"
+              >
+                <div className="w-2 h-2 rounded-full bg-accent-gold"></div>
+                {models.find(m => m.id === selectedModel)?.display_name || 'Select Model'}
+                <ChevronDown size={14} className="ml-0.5 opacity-70" />
+              </button>
+              
+              <AnimatePresence>
+                {modelDropdownOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -5 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute top-full left-0 mt-1 w-48 bg-bg-secondary border border-border-default rounded-lg shadow-lg overflow-hidden z-50 py-1"
+                  >
+                    {models.map(m => (
+                      <button
+                        key={m.id}
+                        onClick={() => {
+                          setSelectedModel(m.id);
+                          setModelDropdownOpen(false);
+                        }}
+                        className={cn(
+                          "w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center gap-2.5",
+                          selectedModel === m.id 
+                            ? "bg-bg-hover text-text-primary" 
+                            : "text-text-secondary hover:bg-bg-hover hover:text-text-primary"
+                        )}
+                      >
+                        <div className={cn(
+                          "w-2 h-2 rounded-full shrink-0",
+                          selectedModel === m.id ? "bg-accent-gold" : "bg-transparent border border-text-tertiary"
+                        )}></div>
+                        <span className="truncate">{m.display_name}</span>
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
           <button
             onClick={() => setRightPanelOpen(!rightPanelOpen)}
@@ -305,26 +378,13 @@ export default function Chat() {
                 style={{ height: 'auto' }}
               />
               
-              <div className="flex flex-col gap-2 shrink-0">
-                <select
-                  value={selectedModel}
-                  onChange={(e) => setSelectedModel(e.target.value)}
-                  className="bg-transparent text-xs text-text-tertiary border-none focus:ring-0 cursor-pointer hover:text-text-secondary appearance-none text-right pr-4"
-                >
-                  {models.map(m => (
-                    <option key={m.id} value={m.id} className="bg-bg-secondary text-text-primary">
-                      {m.icon} {m.display_name}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  onClick={handleSend}
-                  disabled={!input.trim() || loading}
-                  className="p-2 bg-accent-gold text-bg-primary rounded-lg hover:opacity-90 transition-opacity disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center"
-                >
-                  {loading ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
-                </button>
-              </div>
+              <button
+                onClick={handleSend}
+                disabled={!input.trim() || loading}
+                className="p-2 bg-accent-gold text-bg-primary rounded-lg hover:opacity-90 transition-opacity disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center shrink-0 self-end mb-0.5"
+              >
+                {loading ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+              </button>
             </div>
             <div className="flex items-center gap-2 mt-2 px-2">
               <span className="text-[10px] text-text-tertiary font-mono">Cmd+Enter to send</span>
