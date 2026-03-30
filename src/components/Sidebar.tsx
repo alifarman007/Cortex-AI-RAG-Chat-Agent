@@ -9,7 +9,6 @@ import {
   Plus,
   Folder,
   Settings,
-  MoreVertical,
   PanelLeftClose,
   PanelLeftOpen,
   Pin,
@@ -35,13 +34,6 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
   const [conversations, setConversations] = useState<any[]>([]);
   const [knowledgeBases, setKnowledgeBases] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
-
-  useEffect(() => {
-    const handleClickOutside = () => setActiveDropdown(null);
-    document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
-  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -92,7 +84,6 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
     if (location.pathname === `/chat/${id}`) {
       navigate('/');
     }
-    setActiveDropdown(null);
   };
 
   const filteredConvs = conversations.filter(c => c.title.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -185,27 +176,12 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
                       
                       <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setActiveDropdown(activeDropdown === conv.id ? null : conv.id);
-                          }}
-                          className="p-1 text-text-tertiary hover:text-text-primary hover:bg-bg-tertiary rounded-md"
+                          onClick={(e) => handleDeleteChat(e, conv.id)}
+                          className="p-1.5 text-text-tertiary hover:text-red-400 hover:bg-red-400/10 rounded-md transition-colors"
+                          title="Delete Chat"
                         >
-                          <MoreVertical size={14} />
+                          <Trash2 size={14} />
                         </button>
-                        
-                        {activeDropdown === conv.id && (
-                          <div className="absolute right-0 top-full mt-1 w-32 bg-bg-secondary border border-border-default rounded-md shadow-lg z-50 py-1">
-                            <button
-                              onClick={(e) => handleDeleteChat(e, conv.id)}
-                              className="w-full text-left px-3 py-1.5 text-sm text-red-400 hover:bg-bg-tertiary hover:text-red-300 flex items-center gap-2"
-                            >
-                              <Trash2 size={14} />
-                              Delete Chat
-                            </button>
-                          </div>
-                        )}
                       </div>
                     </>
                   )}
