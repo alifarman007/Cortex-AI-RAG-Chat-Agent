@@ -34,19 +34,22 @@ export default function Login() {
 
   const handleGoogleLogin = async () => {
     try {
+      const isIframe = window !== window.parent;
+      
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/chat`,
-          skipBrowserRedirect: true, // Required for iframe environments
+          skipBrowserRedirect: isIframe, // Only skip redirect if we are in an iframe (AI Studio)
         },
       });
       if (error) throw error;
       
-      if (data?.url) {
-        // Open the Google OAuth URL directly in a popup
+      if (isIframe && data?.url) {
+        // Open the Google OAuth URL directly in a popup (for AI Studio preview)
         window.open(data.url, 'oauth_popup', 'width=600,height=700');
       }
+      // If not in an iframe, Supabase automatically redirects the current window to Google.
     } catch (err: any) {
       setError(err.message);
     }
