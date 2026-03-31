@@ -27,8 +27,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(session?.user ?? null);
       setLoading(false);
       
-      // If we are in a popup window and authenticated, close the popup
+      // If we are in a popup window and authenticated, send session to parent and close
       if (session && window.opener) {
+        window.opener.postMessage({ type: 'SUPABASE_SESSION', session }, '*');
         window.close();
       }
     });
@@ -38,13 +39,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(session?.user ?? null);
       setLoading(false);
       
-      // If we are in a popup window and authenticated, close the popup
+      // If we are in a popup window and authenticated, send session to parent and close
       if (session && window.opener) {
+        window.opener.postMessage({ type: 'SUPABASE_SESSION', session }, '*');
         window.close();
       }
     });
 
-    return () => subscription.unsubscribe();
+    // Listen for session from popup (when running in iframe)
+    const handleMessage = async (event: MessageEvent) => {
+      if (event.data?.type === 'SUPABASE_SESSION' && event.data.session) {
+        const { access_token, refresh_token } = event.data.session;
+        if (access_token && refresh_token) {
+          // Manually set the session in the iframe's local storage
+          await supabase.auth.setSession({ access_token, refresh_token });
+        }
+      }
+    };
+    window.addEventListener('message', handleMessage);
+
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener('message', handleMessage);
+    };
   }, []);
 
   const signOut = async () => {

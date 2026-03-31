@@ -40,16 +40,15 @@ export default function Login() {
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/chat`,
-          skipBrowserRedirect: isIframe, // Only skip redirect if we are in an iframe (AI Studio)
+          skipBrowserRedirect: isIframe, // Only skip redirect if we are in an iframe
         },
       });
       if (error) throw error;
       
       if (isIframe && data?.url) {
-        // Open the Google OAuth URL directly in a popup (for AI Studio preview)
+        // Open the Google OAuth URL directly in a popup
         window.open(data.url, 'oauth_popup', 'width=600,height=700');
       }
-      // If not in an iframe, Supabase automatically redirects the current window to Google.
     } catch (err: any) {
       setError(err.message);
     }
