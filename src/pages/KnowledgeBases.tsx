@@ -113,9 +113,6 @@ export default function KnowledgeBases() {
                       <FileText size={14} />
                       <span>{kb.documents?.[0]?.count || 0} docs</span>
                     </div>
-                    <span className="text-[10px] font-mono text-text-tertiary uppercase tracking-wider px-2 py-1 rounded bg-bg-tertiary border border-border-default">
-                      {kb.model_preference}
-                    </span>
                   </div>
                 </Link>
               </motion.div>

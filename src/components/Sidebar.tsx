@@ -79,6 +79,9 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
     e.preventDefault();
     e.stopPropagation();
     
+    // Optimistic update
+    setConversations(prev => prev.filter(c => c.id !== id));
+    
     await supabase.from('conversations').delete().eq('id', id);
     
     if (location.pathname === `/chat/${id}`) {

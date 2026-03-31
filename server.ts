@@ -6,13 +6,22 @@ import { GoogleGenAI } from '@google/genai';
 import { createClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs';
-import dotenv from 'dotenv';
 
 // =============================================
-// Use dotenv with override to force the dev server
-// to pick up the latest environment variables from .env
+// FORCE ENV SYNC (AI Studio Workaround)
 // =============================================
-dotenv.config({ override: true });
+try {
+  const devEnvPath = '/app/.dev.env.json';
+  if (fs.existsSync(devEnvPath)) {
+    const devEnv = JSON.parse(fs.readFileSync(devEnvPath, 'utf8'));
+    for (const key in devEnv) {
+      process.env[key] = devEnv[key];
+    }
+    console.log('[Startup] Synced environment variables from /app/.dev.env.json');
+  }
+} catch (e: any) {
+  console.log('[Startup] Could not sync dev env:', e.message);
+}
 
 const app = express();
 const PORT = 3000;
@@ -33,36 +42,24 @@ app.get('/api/debug-env', (_req, res) => {
 // AI CLIENT
 // =============================================
 function getAiClient(): GoogleGenAI {
-  // Try every env var name AI Studio might use
-  const candidates = [
-    'GEMINI_API_KEY',
-    'API_KEY',
-    'GOOGLE_API_KEY',
-    'GOOGLE_GENAI_API_KEY',
-  ];
-
-  let key = '';
-
-  for (const name of candidates) {
-    const val = (process.env[name] || '').trim();
-    if (val && val !== 'undefined' && val !== 'null' && val !== 'MY_GEMINI_API_KEY' && val !== 'YOUR_API_KEY') {
-      key = val;
-      break;
-    }
+  let apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+  if (!apiKey) {
+    throw new Error('API key is missing. Please go to the Secrets panel (key icon) and ensure GEMINI_API_KEY is set to "AI Studio Free Tier" or a valid API key, then click Apply Changes.');
   }
-
+  
   // Strip wrapping quotes if present
-  if (key.startsWith('"') && key.endsWith('"')) key = key.slice(1, -1);
-  if (key.startsWith("'") && key.endsWith("'")) key = key.slice(1, -1);
-
-  if (!key) {
-    throw new Error(
-      'AI service unavailable: No valid API key found. ' +
-      'Please go to the Secrets panel (key icon) and ensure GEMINI_API_KEY is set to "AI Studio Free Tier" or a valid API key, then click Apply Changes.'
-    );
+  if (apiKey.startsWith('"') && apiKey.endsWith('"')) apiKey = apiKey.slice(1, -1);
+  if (apiKey.startsWith("'") && apiKey.endsWith("'")) apiKey = apiKey.slice(1, -1);
+  
+  if (apiKey === 'AI Studio Free Tier') {
+    throw new Error('You have literally typed "AI Studio Free Tier" into the secrets panel. Please click the dropdown and select the Free Tier option instead of typing it, then click Apply Changes.');
   }
 
-  return new GoogleGenAI({ apiKey: key });
+  if (apiKey === 'MY_GEMINI_API_KEY' || apiKey === 'YOUR_API_KEY') {
+    throw new Error(`The server is still receiving the placeholder text "${apiKey}" instead of your selected Free Tier key. This means the Secrets panel is stuck and failing to sync with the server. Please try this workaround: 1. Open the Secrets panel and click the TRASH CAN icon next to GEMINI_API_KEY to delete it completely. 2. Click "Apply changes". 3. Open the Secrets panel again, click "Add secret", name it GEMINI_API_KEY, and select "AI Studio Free Tier". 4. Click "Apply changes" one last time. If that still fails, please paste a real Google AI Studio API key (starting with AIza...) instead of using the dropdown.`);
+  }
+
+  return new GoogleGenAI({ apiKey });
 }
 
 // =============================================
@@ -224,7 +221,7 @@ app.post('/api/chat', async (req, res) => {
     const apiModelId = modelData?.api_model_id || 'gemini-3-flash-preview';
 
     // 2. Get KB config
-    let systemPrompt = 'You are a helpful assistant.';
+    let systemPrompt = 'You are Cortex AI RAG Agent, a helpful assistant. Provide clear, well-formatted markdown responses.';
     if (knowledge_base_id) {
       const { data: kb } = await supabase
         .from('knowledge_bases')
@@ -232,7 +229,7 @@ app.post('/api/chat', async (req, res) => {
         .eq('id', knowledge_base_id)
         .single();
       if (kb?.system_prompt) {
-        systemPrompt = kb.system_prompt;
+        systemPrompt = `You are Cortex AI RAG Agent. ${kb.system_prompt}`;
       }
     }
 
@@ -310,10 +307,31 @@ app.post('/api/chat', async (req, res) => {
     }
     
     let errorMessage = error.message;
-    if (errorMessage.includes('API key not valid') || errorMessage.includes('API_KEY_INVALID')) {
-      errorMessage = 'API key is invalid. Please go to the Secrets panel (key icon) and ensure GEMINI_API_KEY is set to "AI Studio Free Tier" or a valid API key, then click Apply Changes.';
+    try {
+      // Sometimes the error message is a JSON string containing the real error
+      const parsed = JSON.parse(errorMessage);
+      if (parsed.error && parsed.error.message) {
+        // Try to parse the inner message if it's also JSON
+        try {
+          const innerParsed = JSON.parse(parsed.error.message);
+          if (innerParsed.error && innerParsed.error.message) {
+            errorMessage = innerParsed.error.message;
+          } else {
+            errorMessage = parsed.error.message;
+          }
+        } catch (e) {
+          errorMessage = parsed.error.message;
+        }
+      }
+    } catch (e) {
+      // Not JSON, keep original message
     }
     
+    // Add a helpful hint for API key errors
+    if (errorMessage.includes('API key not valid') || errorMessage.includes('API_KEY_INVALID')) {
+      errorMessage = 'Your API key is invalid. Please go to the Secrets panel (the key icon on the left), ensure your GEMINI_API_KEY is correct, and click Apply Changes.';
+    }
+
     res.write(`data: ${JSON.stringify({ error: errorMessage })}\n\n`);
     res.end();
   }

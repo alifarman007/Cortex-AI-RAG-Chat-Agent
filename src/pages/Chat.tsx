@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/AuthContext';
 import Sidebar from '../components/Sidebar';
@@ -353,10 +355,14 @@ export default function Chat() {
                       "max-w-[80%] rounded-2xl px-5 py-3.5 text-[15px] leading-relaxed",
                       msg.role === 'user'
                         ? "bg-accent-gold-dim text-text-primary border border-accent-gold/20"
-                        : "text-text-primary"
+                        : "text-text-primary markdown-body"
                     )}
                   >
-                    {msg.content}
+                    {msg.role === 'user' ? (
+                      msg.content
+                    ) : (
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                    )}
                     {msg.citations && msg.citations.length > 0 && (
                       <div className="mt-3 pt-3 border-t border-border-default/50">
                         <div className="flex items-center gap-2 text-xs text-text-tertiary mb-2">
@@ -385,8 +391,8 @@ export default function Chat() {
                   <div className="w-8 h-8 rounded-full bg-bg-tertiary flex items-center justify-center shrink-0 border border-border-default">
                     <span className="text-xs">◉</span>
                   </div>
-                  <div className="max-w-[80%] rounded-2xl px-5 py-3.5 text-[15px] leading-relaxed text-text-primary">
-                    {streamingText}
+                  <div className="max-w-[80%] rounded-2xl px-5 py-3.5 text-[15px] leading-relaxed text-text-primary markdown-body">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{streamingText}</ReactMarkdown>
                     <motion.span
                       animate={{ opacity: [1, 0] }}
                       transition={{ duration: 0.53, repeat: Infinity }}
