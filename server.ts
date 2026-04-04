@@ -277,24 +277,44 @@ app.post('/api/chat', async (req, res) => {
 
     console.log(`[Chat] Using model: ${apiModelId}`);
 
-    const responseStream = await ai.models.generateContentStream({
-      model: apiModelId,
-      contents,
-      config: {
-        systemInstruction: systemPrompt,
-      },
-    });
+    let responseStream;
+    let retries = 3;
+    let delay = 1000;
+
+    while (retries >= 0) {
+      try {
+        responseStream = await ai.models.generateContentStream({
+          model: apiModelId,
+          contents,
+          config: {
+            systemInstruction: systemPrompt,
+          },
+        });
+        break; // Success
+      } catch (error: any) {
+        const isUnavailable = error.message?.includes('503') || error.message?.includes('UNAVAILABLE');
+        if (retries === 0 || !isUnavailable) {
+          throw error;
+        }
+        console.log(`[Chat] Model unavailable, retrying in ${delay}ms... (${retries} retries left)`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        delay *= 2;
+        retries--;
+      }
+    }
 
     let fullText = '';
     let citations: any[] = [];
 
-    for await (const chunk of responseStream) {
-      if (chunk.text) {
-        fullText += chunk.text;
-        res.write(`data: ${JSON.stringify({ text: chunk.text })}\n\n`);
-      }
-      if (chunk.candidates?.[0]?.groundingMetadata?.groundingChunks) {
-        citations = chunk.candidates[0].groundingMetadata.groundingChunks;
+    if (responseStream) {
+      for await (const chunk of responseStream) {
+        if (chunk.text) {
+          fullText += chunk.text;
+          res.write(`data: ${JSON.stringify({ text: chunk.text })}\n\n`);
+        }
+        if (chunk.candidates?.[0]?.groundingMetadata?.groundingChunks) {
+          citations = chunk.candidates[0].groundingMetadata.groundingChunks;
+        }
       }
     }
 
