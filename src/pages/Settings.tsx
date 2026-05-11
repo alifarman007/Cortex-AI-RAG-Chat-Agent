@@ -1,6 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
-import { supabase } from '../lib/supabase';
+import React, { useState } from 'react';
 import { useAuth } from '../lib/AuthContext';
 import Sidebar from '../components/Sidebar';
 import { Moon, Sun, Monitor, LogOut } from 'lucide-react';
@@ -9,16 +7,12 @@ export default function Settings() {
   const { user, signOut } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
-  const [models, setModels] = useState<any[]>([]);
-  const [defaultModel, setDefaultModel] = useState('flash');
+  const [extraMode, setExtraMode] = useState(localStorage.getItem('extra_mode') === 'true');
 
-  useEffect(() => {
-    fetchModels();
-  }, []);
-
-  const fetchModels = async () => {
-    const { data } = await supabase.from('models').select('*').eq('is_enabled', true).order('sort_order');
-    if (data) setModels(data);
+  const toggleExtraMode = () => {
+    const next = !extraMode;
+    setExtraMode(next);
+    localStorage.setItem('extra_mode', String(next));
   };
 
   const handleThemeChange = (newTheme: string) => {
@@ -76,22 +70,24 @@ export default function Settings() {
               </div>
             </section>
 
-            {/* Defaults */}
+            {/* Mode */}
             <section className="bg-bg-secondary border border-border-default rounded-xl p-6 shadow-sm">
-              <h3 className="text-sm font-semibold text-text-primary uppercase tracking-wider mb-4">Defaults</h3>
-              <div className="space-y-4">
+              <h3 className="text-sm font-semibold text-text-primary uppercase tracking-wider mb-4">Mode</h3>
+              <div className="flex items-center justify-between">
                 <div>
-                  <label className="block text-sm text-text-secondary mb-2">Default Model</label>
-                  <select
-                    value={defaultModel}
-                    onChange={(e) => setDefaultModel(e.target.value)}
-                    className="w-full bg-bg-tertiary border border-border-default rounded-lg px-4 py-2 text-text-primary focus:outline-none focus:border-accent-gold focus:ring-1 focus:ring-accent-gold transition-all appearance-none"
-                  >
-                    {models.map(m => (
-                      <option key={m.id} value={m.id}>{m.display_name}</option>
-                    ))}
-                  </select>
+                  <p className="text-text-primary font-medium">Extra Mode</p>
+                  <p className="text-sm text-text-secondary">Enable for more capable responses on complex questions.</p>
                 </div>
+                <button
+                  role="switch"
+                  aria-checked={extraMode}
+                  onClick={toggleExtraMode}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-accent-gold focus:ring-offset-2 focus:ring-offset-bg-secondary ${extraMode ? 'bg-accent-gold' : 'bg-bg-tertiary'}`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition-transform ${extraMode ? 'translate-x-5' : 'translate-x-0'}`}
+                  />
+                </button>
               </div>
             </section>
 

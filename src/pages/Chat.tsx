@@ -4,8 +4,34 @@ import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/AuthContext';
 import Sidebar from '../components/Sidebar';
-import { Paperclip, Send, PanelRightClose, PanelRightOpen, FileText, AlertCircle, Loader2, ChevronDown } from 'lucide-react';
+import { Paperclip, Send, PanelRightClose, PanelRightOpen, FileText, AlertCircle, Loader2 } from 'lucide-react';
 import { cn } from '../components/Sidebar';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+
+const md = {
+  h1: (p: any) => <h1 className="text-2xl font-bold mt-4 mb-2 text-text-primary" {...p} />,
+  h2: (p: any) => <h2 className="text-xl font-bold mt-4 mb-2 text-text-primary" {...p} />,
+  h3: (p: any) => <h3 className="text-lg font-semibold mt-3 mb-1.5 text-text-primary" {...p} />,
+  h4: (p: any) => <h4 className="text-base font-semibold mt-3 mb-1 text-text-primary" {...p} />,
+  p:  (p: any) => <p className="mb-3 last:mb-0 leading-relaxed" {...p} />,
+  ul: (p: any) => <ul className="list-disc pl-6 mb-3 space-y-1" {...p} />,
+  ol: (p: any) => <ol className="list-decimal pl-6 mb-3 space-y-1" {...p} />,
+  li: (p: any) => <li className="leading-relaxed" {...p} />,
+  strong: (p: any) => <strong className="font-semibold text-text-primary" {...p} />,
+  em: (p: any) => <em className="italic" {...p} />,
+  a: (p: any) => <a className="text-accent-gold underline hover:opacity-80" target="_blank" rel="noopener noreferrer" {...p} />,
+  code: ({ inline, className, children, ...rest }: any) =>
+    inline
+      ? <code className="px-1.5 py-0.5 rounded bg-bg-tertiary border border-border-default text-[13px] font-mono" {...rest}>{children}</code>
+      : <code className={cn("block p-3 rounded-md bg-bg-tertiary border border-border-default text-[13px] font-mono overflow-x-auto", className)} {...rest}>{children}</code>,
+  pre: (p: any) => <pre className="mb-3 overflow-x-auto" {...p} />,
+  blockquote: (p: any) => <blockquote className="border-l-2 border-accent-gold pl-4 italic text-text-secondary my-3" {...p} />,
+  hr: () => <hr className="my-4 border-border-default" />,
+  table: (p: any) => <div className="overflow-x-auto my-3"><table className="min-w-full border-collapse text-sm" {...p} /></div>,
+  th: (p: any) => <th className="border border-border-default px-3 py-1.5 bg-bg-tertiary text-left font-medium" {...p} />,
+  td: (p: any) => <td className="border border-border-default px-3 py-1.5" {...p} />,
+};
 
 export default function Chat() {
   const { id } = useParams();
@@ -17,9 +43,6 @@ export default function Chat() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [currentKb, setCurrentKb] = useState<any>(null);
-  const [models, setModels] = useState<any[]>([]);
-  const [selectedModel, setSelectedModel] = useState('flash');
-  const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const [streamingText, setStreamingText] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -33,21 +56,8 @@ export default function Chat() {
   }, [id]);
 
   useEffect(() => {
-    fetchModels();
-  }, []);
-
-  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, streamingText]);
-
-  const fetchModels = async () => {
-    const { data } = await supabase.from('models').select('*').eq('is_enabled', true).order('sort_order');
-    if (data) {
-      // Filter out 'lite' model as requested
-      const filteredModels = data.filter(m => !m.api_model_id.includes('lite'));
-      setModels(filteredModels);
-    }
-  };
 
   const fetchConversation = async () => {
     const { data: conv } = await supabase
@@ -71,16 +81,23 @@ export default function Chat() {
     if (!input.trim() || loading) return;
 
     let convId = id;
+    const firstMessageTitle = input.substring(0, 50);
     if (!convId) {
       const { data } = await supabase
         .from('conversations')
-        .insert({ user_id: user?.id, title: input.substring(0, 50) })
+        .insert({ user_id: user?.id, title: firstMessageTitle })
         .select()
         .single();
       if (data) {
         convId = data.id;
         navigate(`/chat/${convId}`, { replace: true });
       }
+    } else if (messages.length === 0) {
+      await supabase
+        .from('conversations')
+        .update({ title: firstMessageTitle })
+        .eq('id', convId)
+        .eq('title', 'New Chat');
     }
 
     const userMessage = {
@@ -113,7 +130,7 @@ export default function Chat() {
           message: input,
           conversation_id: convId,
           knowledge_base_id: currentKb?.id,
-          model_id: selectedModel
+          model_id: localStorage.getItem('extra_mode') === 'true' ? 'pro' : 'flash'
         })
       });
 
@@ -164,7 +181,7 @@ export default function Chat() {
                   role: 'assistant',
                   content: data.fullText,
                   citations: finalCitations,
-                  model_used: selectedModel
+                  model_used: localStorage.getItem('extra_mode') === 'true' ? 'pro' : 'flash'
                 }).select().single();
                 
                 if (savedMsg) {
@@ -202,7 +219,7 @@ export default function Chat() {
               role: 'assistant',
               content: data.fullText,
               citations: finalCitations,
-              model_used: selectedModel
+              model_used: localStorage.getItem('extra_mode') === 'true' ? 'pro' : 'flash'
             }).select().single();
             if (savedMsg) {
               setMessages(prev => [...prev.filter(m => m.id !== 'temp-user'), { ...userMessage }, savedMsg]);
@@ -234,7 +251,8 @@ export default function Chat() {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
       handleSend();
     }
   };
@@ -251,52 +269,6 @@ export default function Chat() {
               {currentKb ? currentKb.name : 'Cortex AI'}
             </span>
             <span className="text-base font-medium text-text-tertiary font-sans uppercase tracking-widest">RAG Agent</span>
-            
-            {/* Model Selector Dropdown */}
-            <div className="relative ml-2">
-              <button 
-                onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
-                className="flex items-center gap-1.5 text-sm font-medium text-text-secondary hover:text-text-primary transition-colors px-2 py-1 rounded-md hover:bg-bg-hover"
-              >
-                <div className="w-2 h-2 rounded-full bg-accent-gold"></div>
-                {models.find(m => m.id === selectedModel)?.display_name || 'Select Model'}
-                <ChevronDown size={14} className="ml-0.5 opacity-70" />
-              </button>
-              
-              <AnimatePresence>
-                {modelDropdownOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -5 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -5 }}
-                    transition={{ duration: 0.15 }}
-                    className="absolute top-full left-0 mt-1 w-48 bg-bg-secondary border border-border-default rounded-lg shadow-lg overflow-hidden z-50 py-1"
-                  >
-                    {models.map(m => (
-                      <button
-                        key={m.id}
-                        onClick={() => {
-                          setSelectedModel(m.id);
-                          setModelDropdownOpen(false);
-                        }}
-                        className={cn(
-                          "w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center gap-2.5",
-                          selectedModel === m.id 
-                            ? "bg-bg-hover text-text-primary" 
-                            : "text-text-secondary hover:bg-bg-hover hover:text-text-primary"
-                        )}
-                      >
-                        <div className={cn(
-                          "w-2 h-2 rounded-full shrink-0",
-                          selectedModel === m.id ? "bg-accent-gold" : "bg-transparent border border-text-tertiary"
-                        )}></div>
-                        <span className="truncate">{m.display_name}</span>
-                      </button>
-                    ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
           </div>
           <button
             onClick={() => setRightPanelOpen(!rightPanelOpen)}
@@ -308,7 +280,7 @@ export default function Chat() {
 
         {/* Chat Area */}
         <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-          {!id && messages.length === 0 ? (
+          {messages.length === 0 && !streamingText ? (
             <div className="h-full flex flex-col items-center justify-center text-center">
               <motion.div
                 animate={{ y: [0, -10, 0] }}
@@ -318,18 +290,27 @@ export default function Chat() {
                 <h1 className="text-6xl font-sans font-bold text-text-primary mb-2">◉ Cortex AI</h1>
                 <p className="text-text-tertiary font-sans font-medium tracking-widest uppercase text-xl">RAG Agent</p>
               </motion.div>
-              <h2 className="text-2xl font-sans font-bold text-text-secondary mb-8">What would you like to explore today?</h2>
-              <div className="flex gap-4">
-                {['Summarize a doc', 'Compare two files', 'Extract key points'].map((chip) => (
-                  <button
-                    key={chip}
-                    onClick={() => setInput(chip)}
-                    className="px-4 py-2 rounded-full border border-border-default text-text-secondary hover:text-text-primary hover:border-accent-gold transition-colors text-sm"
-                  >
-                    {chip}
-                  </button>
-                ))}
-              </div>
+              <h2 className="text-2xl font-sans font-bold text-text-secondary mb-2">
+                {id ? 'Ready when you are.' : 'What would you like to explore today?'}
+              </h2>
+              <p className="text-text-tertiary text-sm mb-8">
+                {id
+                  ? 'Type a message below to start this conversation.'
+                  : 'Pick a prompt or just start typing.'}
+              </p>
+              {!id && (
+                <div className="flex gap-4">
+                  {['Summarize a doc', 'Compare two files', 'Extract key points'].map((chip) => (
+                    <button
+                      key={chip}
+                      onClick={() => setInput(chip)}
+                      className="px-4 py-2 rounded-full border border-border-default text-text-secondary hover:text-text-primary hover:border-accent-gold transition-colors text-sm"
+                    >
+                      {chip}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           ) : (
             <div className="max-w-3xl mx-auto space-y-6 pb-24">
@@ -356,7 +337,9 @@ export default function Chat() {
                         : "text-text-primary"
                     )}
                   >
-                    {msg.content}
+                    {msg.role === 'assistant'
+                      ? <ReactMarkdown remarkPlugins={[remarkGfm]} components={md}>{msg.content}</ReactMarkdown>
+                      : msg.content}
                     {msg.citations && msg.citations.length > 0 && (
                       <div className="mt-3 pt-3 border-t border-border-default/50">
                         <div className="flex items-center gap-2 text-xs text-text-tertiary mb-2">
@@ -386,7 +369,7 @@ export default function Chat() {
                     <span className="text-xs">◉</span>
                   </div>
                   <div className="max-w-[80%] rounded-2xl px-5 py-3.5 text-[15px] leading-relaxed text-text-primary">
-                    {streamingText}
+                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={md}>{streamingText}</ReactMarkdown>
                     <motion.span
                       animate={{ opacity: [1, 0] }}
                       transition={{ duration: 0.53, repeat: Infinity }}
@@ -427,7 +410,7 @@ export default function Chat() {
               </button>
             </div>
             <div className="flex items-center gap-2 mt-2 px-2">
-              <span className="text-[10px] text-text-tertiary font-mono">Cmd+Enter to send</span>
+              <span className="text-[10px] text-text-tertiary font-mono">Enter to send · Shift+Enter for newline</span>
             </div>
           </div>
         </div>

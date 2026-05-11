@@ -22,14 +22,6 @@ app.use(express.json());
 const upload = multer({ dest: 'uploads/' });
 
 // =============================================
-// DEBUG ENDPOINT - visit /api/debug-env
-// DELETE BEFORE PRODUCTION
-// =============================================
-app.get('/api/debug-env', (_req, res) => {
-  res.json(process.env);
-});
-
-// =============================================
 // AI CLIENT
 // =============================================
 function getAiClient(): GoogleGenAI {

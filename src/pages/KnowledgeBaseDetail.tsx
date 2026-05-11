@@ -20,7 +20,7 @@ export default function KnowledgeBaseDetail() {
     fetchData();
 
     const docSub = supabase
-      .channel('docs_changes')
+      .channel(`docs_changes_${id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'documents', filter: `knowledge_base_id=eq.${id}` }, fetchData)
       .subscribe();
 

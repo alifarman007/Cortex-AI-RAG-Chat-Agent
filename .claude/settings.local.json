@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__supabase__list_projects",
+      "mcp__supabase__list_tables",
+      "mcp__supabase__execute_sql",
+      "mcp__supabase__get_advisors",
+      "Bash(npx tsc *)",
+      "Bash(git -C \"c:\\\\Python_Projects\\\\Cortex-AI-RAG-Chat-Agent\" status --short)",
+      "Bash(git -C \"c:\\\\Python_Projects\\\\Cortex-AI-RAG-Chat-Agent\" ls-files --error-unmatch .env)",
+      "Bash(git -C \"c:\\\\Python_Projects\\\\Cortex-AI-RAG-Chat-Agent\" log --all --full-history -- .env)",
+      "Bash(git -C \"c:\\\\Python_Projects\\\\Cortex-AI-RAG-Chat-Agent\" log --all --full-history -- '*.env*')",
+      "Bash(git -C \"c:\\\\Python_Projects\\\\Cortex-AI-RAG-Chat-Agent\" log --all --full-history --pretty=format: --name-only -- '*.env*')",
+      "Bash(git -C \"c:\\\\Python_Projects\\\\Cortex-AI-RAG-Chat-Agent\" log --all --diff-filter=D --pretty=oneline -- .env.example)",
+      "Bash(git -C \"c:\\\\Python_Projects\\\\Cortex-AI-RAG-Chat-Agent\" cat-file -e HEAD:.env.example)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(git -C \"c:\\\\Python_Projects\\\\Cortex-AI-RAG-Chat-Agent\" show \"4ace3a3^:.env.example\")",
+      "Bash(node --experimental-strip-types -e ' *)",
+      "Bash(npm install *)"
+    ]
+  }
+}

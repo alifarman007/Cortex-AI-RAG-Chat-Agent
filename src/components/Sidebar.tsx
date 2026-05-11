@@ -40,12 +40,12 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
     fetchData();
     
     const convSub = supabase
-      .channel('conversations_changes')
+      .channel(`conversations_changes_${user.id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, fetchData)
       .subscribe();
 
     const kbSub = supabase
-      .channel('kb_changes')
+      .channel(`kb_changes_${user.id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'knowledge_bases' }, fetchData)
       .subscribe();
 
