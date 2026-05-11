@@ -152,6 +152,24 @@ export default async function handler(req: any, res: any) {
       errorMessage = 'Your API key is invalid. Please check your Vercel environment variables.';
     }
 
+    // Gemini Files API auto-deletes uploaded files after 48 hours. If the
+    // model can't find one of our attached files, mark the matching row as
+    // failed so future chats don't re-attach it.
+    const expiredMatch = errorMessage.match(/File\s+([a-z0-9]+)\s+or it may not exist/i);
+    if (expiredMatch) {
+      const expiredId = expiredMatch[1];
+      try {
+        const token = req.headers.authorization?.split(' ')[1];
+        if (token) {
+          const supabase = getSupabaseClient(token);
+          await supabase.from('documents')
+            .update({ status: 'failed', error_message: 'File expired in Gemini storage (48h TTL). Re-upload to use it.' })
+            .eq('google_file_id', `files/${expiredId}`);
+        }
+      } catch {}
+      errorMessage = `One of the attached documents expired in Gemini storage (48h TTL) and has been marked failed. Please re-upload it. (file: ${expiredId})`;
+    }
+
     res.write(`data: ${JSON.stringify({ error: errorMessage })}\n\n`);
     res.end();
   }
