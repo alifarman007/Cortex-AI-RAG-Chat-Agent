@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/AuthContext';
 import Sidebar from '../components/Sidebar';
-import { Paperclip, Send, PanelRightClose, PanelRightOpen, FileText, AlertCircle, Loader2 } from 'lucide-react';
+import { Paperclip, Send, PanelRightClose, PanelRightOpen, FileText, AlertCircle, Loader2, Folder, ChevronDown } from 'lucide-react';
 import { cn } from '../components/Sidebar';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -44,6 +44,8 @@ export default function Chat() {
   const [loading, setLoading] = useState(false);
   const [currentKb, setCurrentKb] = useState<any>(null);
   const [streamingText, setStreamingText] = useState('');
+  const [knowledgeBases, setKnowledgeBases] = useState<any[]>([]);
+  const [kbDropdownOpen, setKbDropdownOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -54,6 +56,25 @@ export default function Chat() {
       setCurrentKb(null);
     }
   }, [id]);
+
+  useEffect(() => {
+    supabase
+      .from('knowledge_bases')
+      .select('*')
+      .order('updated_at', { ascending: false })
+      .then(({ data }) => { if (data) setKnowledgeBases(data); });
+  }, []);
+
+  const handleKbChange = async (kb: any | null) => {
+    setKbDropdownOpen(false);
+    setCurrentKb(kb);
+    if (id) {
+      await supabase
+        .from('conversations')
+        .update({ knowledge_base_id: kb?.id ?? null })
+        .eq('id', id);
+    }
+  };
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -85,7 +106,7 @@ export default function Chat() {
     if (!convId) {
       const { data } = await supabase
         .from('conversations')
-        .insert({ user_id: user?.id, title: firstMessageTitle })
+        .insert({ user_id: user?.id, title: firstMessageTitle, knowledge_base_id: currentKb?.id ?? null })
         .select()
         .single();
       if (data) {
@@ -269,6 +290,54 @@ export default function Chat() {
               {currentKb ? currentKb.name : 'Cortex AI'}
             </span>
             <span className="text-base font-medium text-text-tertiary font-sans uppercase tracking-widest">RAG Agent</span>
+
+            <div className="relative ml-2">
+              <button
+                onClick={() => setKbDropdownOpen(!kbDropdownOpen)}
+                className="flex items-center gap-1.5 text-sm font-medium text-text-secondary hover:text-text-primary transition-colors px-2 py-1 rounded-md hover:bg-bg-hover border border-border-default"
+                title="Choose which knowledge base to chat against"
+              >
+                <Folder size={14} className="opacity-80" />
+                <span className="truncate max-w-[140px]">{currentKb ? currentKb.name : 'No KB attached'}</span>
+                <ChevronDown size={14} className="opacity-70" />
+              </button>
+
+              <AnimatePresence>
+                {kbDropdownOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -5 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute top-full left-0 mt-1 w-56 bg-bg-secondary border border-border-default rounded-lg shadow-lg overflow-hidden z-50 py-1"
+                  >
+                    <button
+                      onClick={() => handleKbChange(null)}
+                      className={cn(
+                        "w-full text-left px-4 py-2.5 text-sm transition-colors",
+                        !currentKb ? "bg-bg-hover text-text-primary" : "text-text-secondary hover:bg-bg-hover hover:text-text-primary"
+                      )}
+                    >
+                      <span className="italic">No knowledge base</span>
+                    </button>
+                    {knowledgeBases.length > 0 && <div className="border-t border-border-default my-1" />}
+                    {knowledgeBases.map(kb => (
+                      <button
+                        key={kb.id}
+                        onClick={() => handleKbChange(kb)}
+                        className={cn(
+                          "w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center gap-2",
+                          currentKb?.id === kb.id ? "bg-bg-hover text-text-primary" : "text-text-secondary hover:bg-bg-hover hover:text-text-primary"
+                        )}
+                      >
+                        <Folder size={14} className="shrink-0 opacity-70" />
+                        <span className="truncate">{kb.name}</span>
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
           <button
             onClick={() => setRightPanelOpen(!rightPanelOpen)}

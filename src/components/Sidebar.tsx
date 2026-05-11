@@ -66,12 +66,13 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
   };
 
   const handleNewChat = async () => {
-    const { data, error } = await supabase
+    const defaultKbId = knowledgeBases[0]?.id ?? null;
+    const { data } = await supabase
       .from('conversations')
-      .insert({ user_id: user?.id, title: 'New Chat' })
+      .insert({ user_id: user?.id, title: 'New Chat', knowledge_base_id: defaultKbId })
       .select()
       .single();
-    
+
     if (data) navigate(`/chat/${data.id}`);
   };
 
