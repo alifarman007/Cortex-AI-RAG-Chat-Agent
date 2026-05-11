@@ -56,6 +56,8 @@ export default function KnowledgeBaseDetail() {
 
     setUploading(true);
 
+    let docId: string | null = null;
+
     try {
       // 1. Create document row
       const { data: doc, error: dbError } = await supabase.from('documents').insert({
@@ -68,6 +70,7 @@ export default function KnowledgeBaseDetail() {
       }).select().single();
 
       if (dbError) throw dbError;
+      docId = doc.id;
 
       // 2. Upload to API
       const formData = new FormData();
@@ -101,16 +104,27 @@ export default function KnowledgeBaseDetail() {
 
     } catch (error: any) {
       console.error('Upload error:', error);
+      if (docId) {
+        await supabase.from('documents')
+          .update({ status: 'failed', error_message: error.message })
+          .eq('id', docId);
+      }
       alert(`Upload failed: ${error.message}`);
     } finally {
       setUploading(false);
       if (e.target) e.target.value = '';
+      fetchData();
     }
   };
 
   const handleDeleteDoc = async (docId: string) => {
     if (!confirm('Are you sure you want to delete this document?')) return;
-    await supabase.from('documents').delete().eq('id', docId);
+    setDocuments(prev => prev.filter(d => d.id !== docId));
+    const { error } = await supabase.from('documents').delete().eq('id', docId);
+    if (error) {
+      alert(`Delete failed: ${error.message}`);
+      fetchData();
+    }
   };
 
   const formatBytes = (bytes: number) => {
