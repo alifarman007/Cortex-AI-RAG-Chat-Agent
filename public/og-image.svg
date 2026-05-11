@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <radialGradient id="glow1" cx="15%" cy="20%" r="50%">
+      <stop offset="0%" stop-color="#FACC15" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#FACC15" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glow2" cx="85%" cy="80%" r="50%">
+      <stop offset="0%" stop-color="#FACC15" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#FACC15" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="border" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FACC15" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#FACC15" stop-opacity="0.1"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="#0A0A0F"/>
+  <rect width="1200" height="630" fill="url(#glow1)"/>
+  <rect width="1200" height="630" fill="url(#glow2)"/>
+
+  <rect x="40" y="40" width="1120" height="550" rx="28" fill="none" stroke="url(#border)" stroke-width="2"/>
+
+  <g transform="translate(600, 240)">
+    <circle cx="0" cy="0" r="60" fill="none" stroke="#FACC15" stroke-width="6"/>
+    <circle cx="0" cy="0" r="22" fill="#FACC15"/>
+  </g>
+
+  <text x="600" y="400" font-family="DM Sans, Helvetica, Arial, sans-serif" font-size="92" font-weight="700" fill="#EAEAF0" text-anchor="middle">Cortex AI</text>
+  <text x="600" y="455" font-family="DM Sans, Helvetica, Arial, sans-serif" font-size="22" font-weight="500" letter-spacing="8" fill="#8888A0" text-anchor="middle">RAG AGENT</text>
+
+  <text x="600" y="535" font-family="DM Sans, Helvetica, Arial, sans-serif" font-size="24" font-weight="400" fill="#A0A0B0" text-anchor="middle">Chat with your documents using Gemini</text>
+</svg>
